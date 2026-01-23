@@ -1,0 +1,90 @@
+import os
+import asyncio
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
+import aiohttp
+
+load_dotenv()
+
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+OURA_TOKEN = os.getenv("OURA_PAT")
+PORT = int(os.getenv("PORT", 8000))
+
+async def fetch_oura_data(endpoint: str, params: dict = None):
+    """Fetch data from Oura API v2"""
+    headers = {"Authorization": f"Bearer {OURA_TOKEN}"}
+    url = f"https://api.ouraring.com/v2/usercollection/{endpoint}"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, params=params) as resp:
+            if resp.status == 200:
+                return await resp.json()
+            return None
+
+async def cmd_sleep(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Get last night's sleep data"""
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    data = await fetch_oura_data("daily_sleep", {"date": yesterday})
+    
+    if data and data.get("data"):
+        sleep = data["data"][0]
+        msg = f"💤 **Sleep** ({sleep['day']})\n"
+        msg += f"Duration: {sleep['total_sleep_duration']//3600}h {(sleep['total_sleep_duration']%3600)//60}m\n"
+        msg += f"Quality: {sleep['sleep_phase_summary'].get('deep', 0)}m deep\n"
+        msg += f"Recovery: {sleep.get('recovery_index', 'N/A')}"
+        await update.message.reply_text(msg, parse_mode="Markdown")
+    else:
+        await update.message.reply_text("No sleep data yet")
+
+async def cmd_activity(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Get today's activity data"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    data = await fetch_oura_data("daily_activity", {"date": today})
+    
+    if data and data.get("data"):
+        act = data["data"][0]
+        msg = f"🏃 **Activity** ({act['day']})\n"
+        msg += f"Calories: {act.get('active_calories', 0)} kcal\n"
+        msg += f"Steps: {act.get('steps', 0)}\n"
+        msg += f"Score: {act.get('score', 'N/A')}"
+        await update.message.reply_text(msg, parse_mode="Markdown")
+    else:
+        await update.message.reply_text("No activity data yet")
+
+async def cmd_readiness(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Get readiness score"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    data = await fetch_oura_data("daily_readiness", {"date": today})
+    
+    if data and data.get("data"):
+        ready = data["data"][0]
+        msg = f"⚡ **Readiness** ({ready['day']})\n"
+        msg += f"Score: {ready.get('score', 'N/A')}\n"
+        msg += f"Resting HR: {ready.get('resting_heart_rate', 'N/A')} bpm\n"
+        msg += f"HRV: {ready.get('heart_rate_variability', 'N/A')}"
+        await update.message.reply_text(msg, parse_mode="Markdown")
+    else:
+        await update.message.reply_text("No readiness data yet")
+
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start command with available options"""
+    menu = "/sleep - Last night's sleep\n"
+    menu += "/activity - Today's activity\n"
+    menu += "/readiness - Today's readiness score"
+    await update.message.reply_text(f"Oura Ring Bot\n\n{menu}")
+
+async def main():
+    """Main bot loop"""
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("sleep", cmd_sleep))
+    app.add_handler(CommandHandler("activity", cmd_activity))
+    app.add_handler(CommandHandler("readiness", cmd_readiness))
+    
+    await app.run_polling()
+
+if __name__ == "__main__":
+    asyncio.run(main())
