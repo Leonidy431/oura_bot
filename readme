@@ -1,0 +1,67 @@
+# Oura Ring Telegram Bot на Railway
+
+Минималистичный бот для получения данных Oura Ring 4 через Telegram.
+
+## Команды
+
+- `/sleep` — вчерашний сон (длительность,深sleep, REM, score)
+- `/activity` — вчерашняя активность (калории, шаги, score)
+- `/readiness` — готовность к нагрузке (readiness score, HRV, recovery)
+
+## Установка на Railway
+
+### 1. Подготовка
+
+Создай папку проекта и положи туда:
+- `main.py` — основной бот
+- `requirements.txt` — зависимости
+- `Procfile` — конфиг для Railway
+- `.gitignore` (опционально)
+
+```
+__pycache__/
+*.pyc
+.env
+```
+
+### 2. GitHub
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/<username>/<repo>.git
+git push -u origin main
+```
+
+### 3. Railway Deploy
+
+1. Перейди на [railway.com](https://railway.com)
+2. Нажми **New Project** → **Deploy from GitHub**
+3. Выбери свой репо
+4. Railway автоматически обнаружит Python
+
+### 4. Переменные окружения
+
+В Railway (Variables):
+- `TELEGRAM_BOT_TOKEN` — токен от @BotFather
+- `OURA_PAT` — Personal Access Token (https://cloud.ouraring.com/personal-access-tokens)
+
+Клавиша Deploy — и бот жив.
+
+## API Endpoints
+
+Бот использует Oura API v2:
+- `/v2/usercollection/sleep` — данные сна
+- `/v2/usercollection/activity` — активность
+- `/v2/usercollection/readiness` — готовность
+
+Дата по умолчанию: вчерашний день (UTC).
+
+## Заметки
+
+- Бот работает на polling (встроенный в python-telegram-bot)
+- На Railway это стабильнее, чем webhook
+- Данные кэшируются за один запрос
+- Async/await для неблокирующих операций
