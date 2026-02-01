@@ -1,0 +1,11 @@
+# Oura Ring Telegram Bot - Зависимости
+# Для развертывания на Railway
+
+# Telegram Bot API
+python-telegram-bot==21.8
+
+# HTTP клиент для асинхронных запросов к Oura API
+aiohttp==3.10.0
+
+# Загрузка переменных окружения из .env файла (для локальной разработки)
+python-dotenv==1.0.1
